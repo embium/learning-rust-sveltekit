@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "dev:docker": "docker compose -f docker-compose.yaml up db",
+    "dev:packages": "pnpm --parallel run dev",
+    "dev": "run-p dev:*",
+    "docker:up": "docker compose -f docker-compose.yaml up",
+    "docker:build": "docker compose -f docker-compose.yaml build",
+    "test:server": "run-s docker:up",
+    "test:prepare": "run-p build docker:build",
+    "build": "pnpm run --recursive --filter=!@boilerplate/backend build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "npm-run-all": "^4.1.5"
+  },
+  "packageManager": "pnpm@10.3.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

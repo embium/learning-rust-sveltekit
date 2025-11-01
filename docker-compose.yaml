@@ -1,0 +1,20 @@
+# DEV Compose file.
+# For a production file see: README.md
+
+services:
+  db:
+    image: postgres:14.19-alpine3.21 # Specifies the PostgreSQL image and version
+    restart: always # Ensures the container restarts if it crashes
+    environment:
+      POSTGRES_PASSWORD: mypassword # Sets the password for the user
+    ports:
+      - "5432:5432" # Maps host port 5432 to container port 5432
+
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      - db
+    restart: unless-stopped
+    ports:
+      - 3000:8000

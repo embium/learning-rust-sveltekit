@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "name": "@boilerplate/backend",
+  "scripts": {
+    "dev": "cargo watch -x \"run --bin backend\"",
+    "build": "cargo build --release",
+    "test:server": "SIZE_LIMIT=10MiB LISTEN_ADDR=0.0.0.0:3000 cargo run",
+    "test:prepare": "cargo build"
+  }
+}

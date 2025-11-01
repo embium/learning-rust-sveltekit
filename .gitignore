@@ -1,0 +1,11 @@
+.env
+*.tsbuildinfo
+node_modules
+dist
+bin
+
+target
+
+# Testing
+test-results
+tmp

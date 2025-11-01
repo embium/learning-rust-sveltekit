@@ -1,0 +1,15 @@
+*
+
+!/packages
+!/package.json
+!/pnpm-lock.yaml
+!/pnpm-workspace.yaml
+
+**/target
+**/node_modules
+**/dist
+**/bin
+**/*.tsbuildinfo
+**/build
+**/.svelte
+**/.svelte-kit
