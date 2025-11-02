@@ -41,8 +41,23 @@ pub struct Store {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Account {
+    pub name: String,
     pub email: String,
     pub password: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccountSettings {
+    pub name: Option<String>,
+    pub email: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccountUpdateRequest {
+    pub name: Option<String>,
+    pub email: String,
+    pub current_password: Option<String>,
+    pub new_password: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Validate)]
@@ -216,6 +231,72 @@ impl Store {
 
         Ok(())
     }
+
+    pub async fn get_account_settings(&self, user_email: String) -> Result<AccountSettings, StoreError> {
+        let account = sqlx::query_as!(
+            AccountSettings,
+            r#"SELECT email, name FROM accounts WHERE email = $1"#,
+            user_email
+        )
+        .fetch_one(&self.connection)
+        .await?;
+
+        Ok(account)
+    }
+
+    pub async fn edit_account_settings(&self, user_email: String, update_request: AccountUpdateRequest) -> Result<(), StoreError> {
+        // If new password is provided, verify current password first
+        if let Some(new_password) = &update_request.new_password {
+            if new_password.trim().is_empty() {
+                return self.update_name_and_email_only(user_email, update_request).await;
+            }
+
+            // Verify current password is provided and correct
+            let current_password = update_request.current_password
+                .as_ref()
+                .ok_or(StoreError::MissingCurrentPassword)?;
+
+            if !self.authenticate_user(&user_email, current_password).await? {
+                return Err(StoreError::InvalidCurrentPassword);
+            }
+
+            // Update all fields including password
+            let hashed_password = Self::hash_password(new_password.as_bytes())
+                .map_err(|e| StoreError::HashError(e.to_string()))?;
+
+            let result = sqlx::query("UPDATE accounts SET email = $1, password = $2, name = $3 WHERE email = $4")
+                .bind(&update_request.email)
+                .bind(hashed_password)
+                .bind(&update_request.name)
+                .bind(user_email)
+                .execute(&self.connection)
+                .await?;
+
+            if result.rows_affected() == 0 {
+                return Err(StoreError::UserNotFound);
+            }
+        } else {
+            // No password change, update only name and email
+            return self.update_name_and_email_only(user_email, update_request).await;
+        }
+
+        Ok(())
+    }
+
+    async fn update_name_and_email_only(&self, user_email: String, update_request: AccountUpdateRequest) -> Result<(), StoreError> {
+        let result = sqlx::query("UPDATE accounts SET email = $1, name = $2 WHERE email = $3")
+            .bind(&update_request.email)
+            .bind(&update_request.name)
+            .bind(user_email)
+            .execute(&self.connection)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(StoreError::UserNotFound);
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]
@@ -244,6 +325,18 @@ pub enum StoreError {
     #[error("Failed to create project")]
     FailedProjectCreation,
 
+    #[error("Failed to get account settings")]
+    FailedGetAccount,
+
+    #[error("Failed to update account")]
+    FailedUpdateAccount,
+
+    #[error("Current password is required when setting a new password")]
+    MissingCurrentPassword,
+
+    #[error("Current password is incorrect")]
+    InvalidCurrentPassword,
+
     #[error("Session error")]
     SessionError,
 
@@ -261,9 +354,13 @@ impl IntoResponse for StoreError {
         let status = match self {
             StoreError::UserNotFound
             | StoreError::IncorrectPassword
+            | StoreError::InvalidCurrentPassword
             | StoreError::SessionError  => StatusCode::UNAUTHORIZED,
             StoreError::UserDataNotFound(_)
             | StoreError::ProjectNotFound
+            | StoreError::FailedGetAccount
+            | StoreError::FailedUpdateAccount
+            | StoreError::MissingCurrentPassword
             | StoreError::MalformedStoreHash
             | StoreError::FailedProjectCreation
             | StoreError::InvalidInput(_) => StatusCode::BAD_REQUEST,

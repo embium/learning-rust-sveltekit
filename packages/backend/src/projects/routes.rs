@@ -1,11 +1,8 @@
 use axum::{
     extract::{Json, State, Path},
     http::StatusCode,
-    response::IntoResponse,
 };
-use serde::Deserialize;
 use std::{sync::Arc};
-use validator::Validate;
 use tower_sessions::{Session};
 
 use crate::store;
@@ -29,10 +26,11 @@ pub async fn list_project_handler(
     State(store): State<Arc<store::Store>>,
     session: Session,
     _rate_limit: rate_limit::RateLimit,
-) -> Result<impl IntoResponse, store::StoreError> {
+) -> Result<Json<Vec<store::Project>>, store::StoreError> {
     let user_email = require_login(&session).await?;
-    let projects = store.list_projects(user_email).await?;
-    Ok(Json(serde_json::json!(projects)))
+    store.list_projects(user_email)
+      .await
+      .map(Json)
 }
 
 pub async fn get_project_by_id_handler(
@@ -40,12 +38,11 @@ pub async fn get_project_by_id_handler(
     session: Session,
     _rate_limit: rate_limit::RateLimit,
     Path(id): Path<uuid::Uuid>,
-) -> Result<StatusCode, store::StoreError> {
+) -> Result<Json<store::Project>, store::StoreError> {
     require_login(&session).await?;
     store.get_project_by_id(id)
         .await
-        .map(|_| StatusCode::OK)
-        .map_err(|_| store::StoreError::ProjectNotFound)
+        .map(Json)
 }
 
 pub async fn update_project_handler(

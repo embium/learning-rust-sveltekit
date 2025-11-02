@@ -19,6 +19,7 @@
     Filter,
   } from "lucide-svelte";
   import { onMount } from "svelte";
+  import { resolve } from "$app/paths";
 
   let projects = $state<Project[]>([]);
   let filteredProjects = $state<Project[]>([]);
@@ -299,7 +300,11 @@
                   </span>
                 </div>
                 <div>
-                  <Card.Title class="text-base">{project.name}</Card.Title>
+                  <Card.Title class="text-base">
+                    <a href={resolve(`/projects/${project.id}`)}
+                      >{project.name}</a
+                    >
+                  </Card.Title>
                 </div>
               </div>
               <div class="flex items-center space-x-1">

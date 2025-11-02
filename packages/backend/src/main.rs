@@ -24,22 +24,8 @@ mod store;
 mod rate_limit;
 mod config;
 mod auth;
-mod project;
-
-use auth::routes::{
-  login,
-  logout,
-  get_current_user,
-  add_user,
-};
-use project::routes::{
-  create_project_handler,
-  list_project_handler,
-  get_project_by_id_handler,
-  update_project_handler,
-  delete_project_handler,
-};
-
+mod projects;
+mod account;
 
 #[tokio::main]
 async fn main() {
@@ -62,15 +48,17 @@ async fn main() {
         .with_expiry(Expiry::OnInactivity(Duration::days(30)));
 
     let api_routes = Router::new()
-        .route("/login", post(login))
-        .route("/logout", post(logout))
-        .route("/me", get(get_current_user))
-        .route("/signup", post(add_user))
-        .route("/projects", post(create_project_handler))
-        .route("/projects", get(list_project_handler))
-        .route("/projects/{id}", get(get_project_by_id_handler))
-        .route("/projects/{id}", put(update_project_handler))
-        .route("/projects/{id}", delete(delete_project_handler))
+        .route("/login", post(auth::routes::login))
+        .route("/logout", post(auth::routes::logout))
+        .route("/me", get(auth::routes::get_current_user))
+        .route("/signup", post(auth::routes::add_user))
+        .route("/projects", post(projects::routes::create_project_handler))
+        .route("/projects", get(projects::routes::list_project_handler))
+        .route("/projects/{id}", get(projects::routes::get_project_by_id_handler))
+        .route("/projects/{id}", put(projects::routes::update_project_handler))
+        .route("/projects/{id}", delete(projects::routes::delete_project_handler))
+        .route("/account", get(account::routes::get_account_settings_handler))
+        .route("/account", put(account::routes::edit_account_settings_handler))
         .route("/healthz", get(health_check))
         .with_state(shared_store)
         .layer(session_layer);

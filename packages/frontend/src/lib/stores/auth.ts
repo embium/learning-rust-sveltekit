@@ -59,8 +59,6 @@ function createAuthStore() {
         const user = await authAPI.checkSession();
 
         if (!user || user.email !== storedEmail) {
-          // Session invalid or email mismatch, clear auth
-          console.log("❌ Session validation failed, clearing auth");
           set({
             user: null,
             isAuthenticated: false,
@@ -68,8 +66,6 @@ function createAuthStore() {
           });
           localStorage.removeItem(STORAGE_KEY_USER);
         } else {
-          // Session valid, ensure state is correct
-          console.log("✅ Session validated successfully");
           update((state) => ({
             ...state,
             user: { email: user.email },
@@ -77,8 +73,8 @@ function createAuthStore() {
             isLoading: false,
           }));
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("❌ Failed to validate session:", error);
         // On error, clear auth state
         set({
           user: null,
@@ -90,8 +86,6 @@ function createAuthStore() {
     },
 
     setUser: (user: User) => {
-      console.log("👤 Setting user in auth store:", user.email);
-
       const newState: AuthState = {
         user,
         isAuthenticated: true,
@@ -107,8 +101,6 @@ function createAuthStore() {
     },
 
     clearUser: () => {
-      console.log("🚪 Clearing user from auth store");
-
       set({
         user: null,
         isAuthenticated: false,
@@ -128,19 +120,12 @@ function createAuthStore() {
     checkAuthStatus: async () => {
       if (!browser) return;
 
-      console.log("🔍 Starting auth status check...");
-
       // Don't set loading here - let the component handle loading states
       try {
         const { authAPI } = await import("$lib/api/auth");
         const user = await authAPI.checkSession();
 
         if (user) {
-          console.log(
-            "✅ Auth check successful, user authenticated:",
-            user.email,
-          );
-
           const newState: AuthState = {
             user,
             isAuthenticated: true,
@@ -152,8 +137,6 @@ function createAuthStore() {
           // Update localStorage
           localStorage.setItem(STORAGE_KEY_USER, user.email);
         } else {
-          console.log("❌ Auth check failed, no valid session");
-
           set({
             user: null,
             isAuthenticated: false,
@@ -162,9 +145,8 @@ function createAuthStore() {
 
           localStorage.removeItem(STORAGE_KEY_USER);
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
-        console.error("❌ Auth check failed with error:", error);
-
         set({
           user: null,
           isAuthenticated: false,

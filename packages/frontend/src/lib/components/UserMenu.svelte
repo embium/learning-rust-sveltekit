@@ -2,6 +2,7 @@
   import { auth } from "$lib/stores/auth";
   import { authAPI } from "$lib/api/auth";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { Button } from "$lib/components/ui/button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import { Avatar, AvatarFallback } from "$lib/components/ui/avatar";
@@ -16,7 +17,7 @@
     try {
       await authAPI.logout();
       auth.clearUser();
-      await goto("/login");
+      await goto(resolve("/login"));
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
@@ -55,14 +56,14 @@
 
       <DropdownMenu.Group>
         <DropdownMenu.Item class="cursor-pointer">
-          <a href="/dashboard" class="flex items-center w-full">
+          <a href={resolve("/dashboard")} class="flex items-center w-full">
             <Home class="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </a>
         </DropdownMenu.Item>
 
         <DropdownMenu.Item class="cursor-pointer">
-          <a href="/projects" class="flex items-center w-full">
+          <a href={resolve("/projects")} class="flex items-center w-full">
             <FolderOpen class="mr-2 h-4 w-4" />
             <span>Projects</span>
           </a>
@@ -73,10 +74,10 @@
 
       <DropdownMenu.Group>
         <DropdownMenu.Item class="cursor-pointer">
-          <div class="flex items-center w-full">
+          <a href={resolve("/account")} class="flex items-center w-full">
             <Settings class="mr-2 h-4 w-4" />
             <span>Settings</span>
-          </div>
+          </a>
         </DropdownMenu.Item>
       </DropdownMenu.Group>
 
