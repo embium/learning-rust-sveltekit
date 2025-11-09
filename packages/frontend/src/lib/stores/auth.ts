@@ -1,168 +1,109 @@
-import { writable, derived } from "svelte/store";
-import { browser } from "$app/environment";
+import { browser } from '$app/environment';
+import { writable, type Writable } from 'svelte/store';
+import { authAPI, type User } from '$lib/api/auth';
 
-export interface User {
-  id: string;
-  email: string;
-  fullname?: string;
-  avatar_url?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AuthState {
-  user: User | null;
+type AuthState = {
   isAuthenticated: boolean;
   isLoading: boolean;
-}
+  user: User | null;
+  lastCheckedAt?: number;
+};
 
-const STORAGE_KEY_USER = "user_email";
+class AuthStore {
+  private store: Writable<AuthState>;
+  private monitorId: ReturnType<typeof setInterval> | null = null;
+  subscribe: (run: (value: AuthState) => void) => () => void;
 
-// Initialize auth state from localStorage
-function createAuthStore() {
-  const initialState: AuthState = {
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-  };
-
-  // Load from localStorage if in browser
-  if (browser) {
-    const storedEmail = localStorage.getItem(STORAGE_KEY_USER);
-
-    if (storedEmail) {
-      try {
-        // Don't set user here, will be fetched from API
-        initialState.isAuthenticated = true;
-      } catch (e) {
-        console.error("Failed to parse stored auth data", e);
-        localStorage.removeItem(STORAGE_KEY_USER);
-      }
-    }
-    initialState.isLoading = false;
+  constructor() {
+    this.store = writable<AuthState>({
+      isAuthenticated: false,
+      isLoading: false,
+      user: null,
+    });
+    this.subscribe = this.store.subscribe;
   }
 
-  const { subscribe, set, update } = writable<AuthState>(initialState);
-
-  return {
-    subscribe,
-
-    initializeAuth: async () => {
-      if (!browser) return;
-
-      // Get stored email
-      const storedEmail = localStorage.getItem(STORAGE_KEY_USER);
-      if (!storedEmail) {
-        // No stored data, just set loading to false
-        update((state) => ({ ...state, isLoading: false }));
-        return;
+  init = async () => {
+    if (!browser) return;
+    this.setLoading(true);
+    try {
+      const user = await authAPI.getCurrentUser();
+      if (user) {
+        this.setUser(user);
+        // Start periodic monitor once authenticated
+        this.startMonitor();
+      } else {
+        this.clearUser();
       }
-
+    } catch (err) {
+      // Attempt refresh if access expired
       try {
-        // Dynamically import authAPI to avoid circular dependency
-        const { authAPI } = await import("$lib/api/auth");
-        const user = await authAPI.checkSession();
-
-        if (!user || user.email !== storedEmail) {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-          localStorage.removeItem(STORAGE_KEY_USER);
-        } else {
-          set({
-            user: user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        }
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-        // On error, clear auth state
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
-        localStorage.removeItem(STORAGE_KEY_USER);
+        await authAPI.refreshToken();
+        const user = await authAPI.getCurrentUser();
+        user ? this.setUser(user) : this.clearUser();
+        if (user) this.startMonitor();
+      } catch {
+        this.clearUser();
       }
-    },
+    } finally {
+      this.setLoading(false);
+    }
+  };
 
-    setUser: (user: User) => {
-      const newState: AuthState = {
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-      };
+  setUser = (user: User) => {
+    this.store.update((s) => ({
+      ...s,
+      user,
+      isAuthenticated: true,
+      lastCheckedAt: Date.now(),
+    }));
+  };
 
-      set(newState);
+  clearUser = () => {
+    this.stopMonitor();
+    this.store.set({ isAuthenticated: false, isLoading: false, user: null });
+  };
 
-      // Persist to localStorage
-      if (browser) {
-        localStorage.setItem(STORAGE_KEY_USER, user.email);
+  setLoading = (loading: boolean) => {
+    this.store.update((s) => ({ ...s, isLoading: loading }));
+  };
+
+  checkSession = async () => {
+    if (!browser) return;
+    try {
+      const user = await authAPI.getCurrentUser();
+      if (user) {
+        this.setUser(user);
+        return true;
       }
-    },
-
-    clearUser: () => {
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-      });
-
-      // Clear localStorage
-      if (browser) {
-        localStorage.removeItem(STORAGE_KEY_USER);
+      // If unauthorized, try refresh then fetch
+      await authAPI.refreshToken();
+      const refreshedUser = await authAPI.getCurrentUser();
+      if (refreshedUser) {
+        this.setUser(refreshedUser);
+        return true;
       }
-    },
+    } catch (err) {
+      // swallow; fallthrough to clear
+    }
+    this.clearUser();
+    return false;
+  };
 
-    setLoading: (isLoading: boolean) => {
-      update((state) => ({ ...state, isLoading }));
-    },
+  startMonitor = (intervalMs: number = 5 * 60 * 1000) => {
+    if (!browser) return;
+    if (this.monitorId) return; // already running
+    this.monitorId = setInterval(async () => {
+      await this.checkSession();
+    }, intervalMs);
+  };
 
-    checkAuthStatus: async () => {
-      if (!browser) return;
-
-      try {
-        const { authAPI } = await import("$lib/api/auth");
-        const user = await authAPI.checkSession();
-
-        if (user) {
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-
-          // Update localStorage
-          localStorage.setItem(STORAGE_KEY_USER, user.email);
-        } else {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-
-          localStorage.removeItem(STORAGE_KEY_USER);
-        }
-      } catch (error) {
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-        });
-
-        localStorage.removeItem(STORAGE_KEY_USER);
-      }
-    },
+  stopMonitor = () => {
+    if (this.monitorId) {
+      clearInterval(this.monitorId);
+      this.monitorId = null;
+    }
   };
 }
 
-export const auth = createAuthStore();
-
-// Derived stores for easy access
-export const currentUser = derived(auth, ($auth) => $auth.user);
-export const isAuthenticated = derived(auth, ($auth) => $auth.isAuthenticated);
-export const isLoading = derived(auth, ($auth) => $auth.isLoading);
+export const auth = new AuthStore();

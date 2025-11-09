@@ -35,4 +35,21 @@ impl OauthProviderRepository for PgOauthProviderRepository {
 
         Ok(oauth_provider)
     }
+
+    async fn get_by_user_id_and_provider(
+        &self,
+        user_id: &str,
+        provider: &str,
+    ) -> Result<UserOauthProvider, AppError> {
+        let oauth_provider = sqlx::query_as!(
+            UserOauthProvider,
+            "SELECT * FROM user_oauth_providers WHERE user_id = $1 AND provider = $2",
+            user_id,
+            provider
+        )
+        .fetch_one(&self.db_pool)
+        .await?;
+
+        Ok(oauth_provider)
+    }
 }

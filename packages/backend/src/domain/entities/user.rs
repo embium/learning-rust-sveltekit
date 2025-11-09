@@ -44,6 +44,11 @@ impl User {
         self.updated_at = chrono::Utc::now();
     }
 
+    pub fn change_password(&mut self, password_hash: Option<String>) {
+        self.password_hash = password_hash;
+        self.updated_at = chrono::Utc::now();
+    }
+
     pub fn update(&mut self, fullname: Option<String>, avatar_url: Option<String>) {
         self.fullname = fullname;
         self.avatar_url = avatar_url;

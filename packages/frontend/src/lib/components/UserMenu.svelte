@@ -2,9 +2,14 @@
   import { auth } from "$lib/stores/auth";
   import { authAPI } from "$lib/api/auth";
   import { goto } from "$app/navigation";
+  import { resolve } from "$app/paths";
   import { Button } from "$lib/components/ui/button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
-  import { Avatar, AvatarFallback, AvatarImage } from "$lib/components/ui/avatar";
+  import {
+    Avatar,
+    AvatarFallback,
+    AvatarImage,
+  } from "$lib/components/ui/avatar";
   import { Home, FolderOpen, Settings, LogOut } from "lucide-svelte";
 
   let isLoggingOut = $state(false);
@@ -16,7 +21,7 @@
     try {
       await authAPI.logout();
       auth.clearUser();
-      await goto("/login");
+      await goto(resolve("/login"));
     } catch (error) {
       console.error("Logout failed:", error);
     } finally {
@@ -28,7 +33,9 @@
     if (!fullname) return "U";
     const names = fullname.trim().split(" ");
     if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+    return (
+      names[0].charAt(0) + names[names.length - 1].charAt(0)
+    ).toUpperCase();
   }
 
   function getDisplayName(): string {
@@ -41,13 +48,13 @@
     <DropdownMenu.Trigger>
       <Button variant="ghost" class="relative h-8 w-8 rounded-full">
         <Avatar class="h-8 w-8">
-        {#if $auth.user?.avatar_url}
-          <AvatarImage src={$auth.user.avatar_url} alt={getDisplayName()} />
-        {/if}
-        <AvatarFallback class="bg-primary text-primary-foreground">
-          {getInitials($auth.user?.fullname || "")}
-        </AvatarFallback>
-      </Avatar>
+          {#if $auth.user?.avatar_url}
+            <AvatarImage src={$auth.user.avatar_url} alt={getDisplayName()} />
+          {/if}
+          <AvatarFallback class="bg-primary text-primary-foreground">
+            {getInitials($auth.user?.fullname || "")}
+          </AvatarFallback>
+        </Avatar>
       </Button>
     </DropdownMenu.Trigger>
 
@@ -65,14 +72,14 @@
 
       <DropdownMenu.Group>
         <DropdownMenu.Item class="cursor-pointer">
-          <a href="/dashboard" class="flex items-center w-full">
+          <a href={resolve("/dashboard")} class="flex items-center w-full">
             <Home class="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </a>
         </DropdownMenu.Item>
 
         <DropdownMenu.Item class="cursor-pointer">
-          <a href="/projects" class="flex items-center w-full">
+          <a href={resolve("/projects")} class="flex items-center w-full">
             <FolderOpen class="mr-2 h-4 w-4" />
             <span>Projects</span>
           </a>
@@ -83,7 +90,7 @@
 
       <DropdownMenu.Group>
         <DropdownMenu.Item class="cursor-pointer">
-          <a href="/account" class="flex items-center w-full">
+          <a href={resolve("/user/settings")} class="flex items-center w-full">
             <Settings class="mr-2 h-4 w-4" />
             <span>Settings</span>
           </a>

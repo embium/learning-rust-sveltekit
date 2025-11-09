@@ -4,3 +4,4 @@ pub mod public_oauth_handler;
 pub mod role_handler;
 pub mod super_handler;
 pub mod project_handler;
+pub mod user_handler;

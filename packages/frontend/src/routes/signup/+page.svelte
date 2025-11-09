@@ -29,11 +29,6 @@
   let showConfirmPassword = $state(false);
 
   onMount(() => {
-    // Redirect if already authenticated
-    if ($auth.isAuthenticated) {
-      goto(resolve("/dashboard"));
-    }
-
     // Handle Google OAuth callback
     if (browser) {
       const urlParams = new URLSearchParams(window.location.search);
@@ -124,7 +119,10 @@
     error = "";
 
     try {
-      await authAPI.handleGoogleCallback(code);
+      const user = await authAPI.handleGoogleCallback(code);
+      if (user) {
+        auth.setUser(user);
+      }
 
       // Redirect to dashboard after successful Google authentication
       await goto(resolve("/dashboard"));

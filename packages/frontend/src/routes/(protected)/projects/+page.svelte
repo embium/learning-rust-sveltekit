@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { auth } from "$lib/stores/auth";
   import { projectsAPI, type Project } from "$lib/api/projects";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -20,12 +19,19 @@
   } from "lucide-svelte";
   import { resolve } from "$app/paths";
 
-  let projects = $state<Project[]>([]);
-  let filteredProjects = $state<Project[]>([]);
+  interface PageLoadProps {
+    data: {
+      projects: Project[];
+    };
+  }
+
+  let { data }: PageLoadProps = $props();
+
+  let projects = $state<Project[]>(data?.projects ?? []);
+  let filteredProjects = $state<Project[]>(data?.projects ?? []);
   let isLoadingProjects = $state(false);
   let projectsError = $state("");
-  let searchQuery = $state("");
-  let hasAttemptedLoad = $state(false);
+  let searchQuery = $state(""); // Set to true since we're using server-side data
 
   // Create/Edit Modal State
   let showCreateModal = $state(false);
@@ -44,18 +50,7 @@
   let deletingProject = $state<Project | null>(null);
   let isDeleting = $state(false);
 
-  $effect(() => {
-    if ($auth.user && !hasAttemptedLoad && !$auth.isLoading) {
-      hasAttemptedLoad = true;
-      loadProjects();
-    }
-  });
-
   async function loadProjects() {
-    if (!$auth.user) {
-      return;
-    }
-
     isLoadingProjects = true;
     projectsError = "";
 
@@ -99,11 +94,6 @@
       return;
     }
 
-    if (!$auth.user) {
-      modalError = "User not authenticated";
-      return;
-    }
-
     isCreating = true;
     modalError = "";
 
@@ -114,7 +104,8 @@
       });
 
       showCreateModal = false;
-      await loadProjects();
+      // Reload the page to get updated data from server
+      window.location.reload();
     } catch (error) {
       modalError =
         error instanceof Error ? error.message : "Failed to create project";
@@ -143,7 +134,8 @@
       });
 
       showEditModal = false;
-      await loadProjects();
+      // Reload the page to get updated data from server
+      window.location.reload();
     } catch (error) {
       modalError =
         error instanceof Error ? error.message : "Failed to update project";
@@ -160,7 +152,8 @@
     try {
       await projectsAPI.deleteProject(deletingProject.id!);
       showDeleteModal = false;
-      await loadProjects();
+      // Reload the page to get updated data from server
+      window.location.reload();
     } catch (error) {
       console.error("Failed to delete project:", error);
       // Handle error - maybe show toast

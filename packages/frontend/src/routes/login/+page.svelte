@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { auth } from "$lib/stores/auth";
   import { authAPI } from "$lib/api/auth";
+  import { auth } from "$lib/stores/auth";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { Button } from "$lib/components/ui/button";
@@ -18,22 +18,17 @@
   let error = $state("");
 
   onMount(() => {
-    // Redirect if already authenticated
-    if ($auth.isAuthenticated) {
-      goto("/dashboard");
-    }
-
     // Handle Google OAuth callback
     if (browser) {
       const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const error = urlParams.get('error');
-      
+      const code = urlParams.get("code");
+      const error = urlParams.get("error");
+
       if (error) {
-        console.error('OAuth error:', error);
+        console.error("OAuth error:", error);
         return;
       }
-      
+
       if (code) {
         handleGoogleCallback(code);
       }
@@ -57,7 +52,10 @@
     error = "";
 
     try {
-      await authAPI.login({ email, password });
+      const user = await authAPI.login({ email, password });
+      if (user) {
+        auth.setUser(user);
+      }
 
       // Check if there's a redirect URL in the query params
       const redirectTo = $page.url.searchParams.get("redirect") || "/dashboard";
@@ -81,7 +79,7 @@
   async function handleGoogleLogin() {
     isLoading = true;
     error = "";
-    
+
     try {
       const googleAuthUrl = await authAPI.getGoogleAuthUrl();
       if (googleAuthUrl) {
@@ -99,15 +97,19 @@
   async function handleGoogleCallback(code: string) {
     isLoading = true;
     error = "";
-    
+
     try {
-      await authAPI.handleGoogleCallback(code);
-      
+      const user = await authAPI.handleGoogleCallback(code);
+      if (user) {
+        auth.setUser(user);
+      }
+
       // Check if there's a redirect URL in the query params
       const redirectTo = $page.url.searchParams.get("redirect") || "/dashboard";
       await goto(redirectTo);
     } catch (err) {
-      error = err instanceof Error ? err.message : "Google authentication failed";
+      error =
+        err instanceof Error ? err.message : "Google authentication failed";
       isLoading = false;
     }
   }
@@ -124,8 +126,8 @@
     class="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r"
   >
     <div
-      class="absolute inset-0 bg-linear-to-br from-blue-600 to-purple-700">
-    </div>
+      class="absolute inset-0 bg-linear-to-br from-blue-600 to-purple-700"
+    ></div>
     <div class="relative z-20 flex items-center text-lg font-medium">
       <div
         class="mr-2 h-6 w-6 rounded bg-white/10 flex items-center justify-center"

@@ -82,6 +82,9 @@ pub enum AppError {
     #[error("User Email Already Exist")]
     UserEmailAlreadyExist,
 
+    #[error("Account with email {0} already exists. Please log in with your email and password instead.")]
+    AccountAlreadyExistsWithEmail(String),
+
     #[error("User with given email {0} not exist")]
     UserNotExist(String),
 
@@ -169,6 +172,11 @@ impl IntoResponse for AppError {
                 StatusCode::UNPROCESSABLE_ENTITY,
                 "user_email_already_exist".to_string(),
                 "User with given email already exist".to_string(),
+            ),
+            AppError::AccountAlreadyExistsWithEmail(value) => (
+                StatusCode::CONFLICT,
+                "account_already_exists_with_email".to_string(),
+                format!("Account with email {} already exists. Please log in with your email and password instead.", value),
             ),
             AppError::UserNotExist(value) => (
                 StatusCode::BAD_REQUEST,

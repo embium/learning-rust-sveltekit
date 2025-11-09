@@ -3,9 +3,8 @@ use std::sync::Arc;
 use axum::{ extract::{State, Path}, middleware, routing::get, Extension, Json, Router };
 
 use crate::{
-    application::state::AppState,
-    application::dto::project::create_update_project_request::CreateOrUpdateProject,
-    domain::entities::{project::Project, user::UserFull},
+    application::{dto::project::create_update_project_request::CreateOrUpdateProject, state::AppState},
+    domain::entities::{project::{Project, ProjectWithOwnerEmail}, user::UserFull},
     infra::{
         errors::app_error::AppError,
         utils::response::SuccessResponse,
@@ -35,7 +34,7 @@ async fn get_project_by_id_and_user_id(
     Extension(current_user): Extension<UserFull>,
     State(state): State<Arc<AppState>>,
     Path(project_id): Path<String>
-) -> Result<SuccessResponse<Project>, AppError> {
+) -> Result<SuccessResponse<ProjectWithOwnerEmail>, AppError> {
     let user_id = &current_user.user.id;
 
     let project = state.uc.project.get_by_id_and_user_id.execute(&project_id, user_id).await?;
@@ -60,7 +59,7 @@ async fn update_project(
     State(state): State<Arc<AppState>>,
     Path(project_id): Path<String>,
     Json(req): Json<CreateOrUpdateProject>
-) -> Result<SuccessResponse<Project>, AppError> {
+) -> Result<SuccessResponse<ProjectWithOwnerEmail>, AppError> {
     let user_id = &current_user.user.id;
 
     let project = state.uc.project.update_project.execute(&project_id, user_id, req).await?;

@@ -1,29 +1,23 @@
 <script lang="ts">
-  import { auth } from "$lib/stores/auth";
   import { projectsAPI, type Project } from "$lib/api/projects";
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card";
   import LoadingSpinner from "$lib/components/LoadingSpinner.svelte";
   import { Plus, FolderOpen, BarChart3, Users, Activity } from "lucide-svelte";
-  import { onMount } from "svelte";
 
-  let projects = $state<Project[]>([]);
+  interface PageLoadProps {
+    data: {
+      projects: Project[];
+    };
+  }
+
+  let { data }: PageLoadProps = $props();
+
+  let projects = $state<Project[]>(data.projects);
   let isLoadingProjects = $state(false);
   let projectsError = $state("");
-  let hasAttemptedLoad = $state(false);
-
-  $effect(() => {
-    if ($auth.user && !hasAttemptedLoad && !$auth.isLoading) {
-      hasAttemptedLoad = true;
-      loadProjects();
-    }
-  });
 
   async function loadProjects() {
-    if (!$auth.user) {
-      return;
-    }
-
     isLoadingProjects = true;
     projectsError = "";
 
@@ -93,9 +87,7 @@
     class="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0"
   >
     <div>
-      <h1 class="text-3xl font-bold tracking-tight">
-        Welcome back{$auth.user ? `, ${$auth.user.email.split("@")[0]}` : ""}!
-      </h1>
+      <h1 class="text-3xl font-bold tracking-tight">Welcome back!</h1>
       <p class="text-muted-foreground">
         Here's what's happening with your projects today.
       </p>

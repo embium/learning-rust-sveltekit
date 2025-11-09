@@ -2,15 +2,12 @@ use std::sync::Arc;
 use axum::{
     http::{
         header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
-        HeaderValue, Method, StatusCode, Uri
+        HeaderValue, Method
     },
-    extract::{Request, State},
-    response::Response,
-    body::Body,
+    extract::Request,
     Router,
     ServiceExt,
 };
-use tokio::fs;
 
 use casbin::{ CoreApi, DefaultModel, Enforcer };
 use sqlx_adapter::SqlxAdapter;
@@ -19,8 +16,7 @@ use tower_http::cors::{ AllowOrigin, CorsLayer };
 use tracing::{ debug, info };
 use tower::Layer;
 use tower_http::{
-    normalize_path::NormalizePathLayer,
-    services::{ ServeDir, ServeFile },
+    normalize_path::NormalizePathLayer
 };
 
 use crate::{
@@ -33,6 +29,7 @@ use crate::{
         role_handler::setup_role_routes,
         super_handler::setup_super_handler,
         project_handler::setup_project_routes,
+        user_handler::setup_user_routes,
     },
 };
 
@@ -75,7 +72,6 @@ impl ServerBuilder {
         let app_router = Router::new()
             .nest("/oauth", setup_public_oauth_handler())
             .nest("/api", api_routes)
-            .fallback(Self::spa_handler)  // Use custom handler instead of ServeDir
             .layer(self.setup_cors())
             .with_state(app_state);
 
@@ -90,59 +86,6 @@ impl ServerBuilder {
         .expect("API Server Error");
     }
 
-    async fn spa_handler(uri: Uri, State(state): State<Arc<AppState>>) -> Response<Body> {
-        let path = uri.path().trim_start_matches('/');
-
-        // Don't handle API routes - let them 404 naturally
-        if path.starts_with("api/") {
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::empty())
-                .unwrap();
-        }
-
-        let frontend_path = &state.cfg.frontend_path;
-
-        // First try to serve the actual file (for CSS, JS, images, etc.)
-        if !path.is_empty() {
-            let file_path = std::path::Path::new(frontend_path).join(path);
-            if let Ok(contents) = fs::read(&file_path).await {
-                // Determine content type based on file extension
-                let content_type = match file_path.extension().and_then(|ext| ext.to_str()) {
-                    Some("html") => "text/html; charset=utf-8",
-                    Some("css") => "text/css",
-                    Some("js") => "application/javascript",
-                    Some("png") => "image/png",
-                    Some("jpg") | Some("jpeg") => "image/jpeg",
-                    Some("svg") => "image/svg+xml",
-                    _ => "application/octet-stream",
-                };
-
-                return Response::builder()
-                    .status(StatusCode::OK)
-                    .header("content-type", content_type)
-                    .body(Body::from(contents))
-                    .unwrap();
-            }
-        }
-
-        // If file doesn't exist, serve index.html for SPA routing (with 200 status!)
-        let index_path = std::path::Path::new(frontend_path).join("index.html");
-        match fs::read(&index_path).await {
-            Ok(contents) => Response::builder()
-                .status(StatusCode::OK)  // This is the key - 200, not 404!
-                .header("content-type", "text/html; charset=utf-8")
-                .body(Body::from(contents))
-                .unwrap(),
-            Err(_) => Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::from("Frontend files not found"))
-                .unwrap(),
-        }
-    }
-
-
-
     fn setup_api_router(&self, app_state: Arc<AppState>) -> Router<Arc<AppState>> {
         Router::new()
             .nest("/v1/permissions", setup_permission_handler())
@@ -150,6 +93,7 @@ impl ServerBuilder {
             .nest("/v1/auth", setup_auth_routes(app_state.clone()))
             .nest("/v1/super", setup_super_handler(app_state.clone()))
             .nest("/v1/projects", setup_project_routes(app_state.clone()))
+            .nest("/v1/user", setup_user_routes(app_state.clone()))
     }
 
     fn setup_cors(&self) -> CorsLayer {

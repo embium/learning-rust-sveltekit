@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     application::dto::project::create_update_project_request::CreateOrUpdateProject,
-    domain::{entities::project::Project, repositories::project_repo::ProjectRepository},
-    infra::{errors::app_error::AppError},
+    domain::{entities::project::{Project, ProjectWithOwnerEmail}, repositories::project_repo::ProjectRepository},
+    infra::errors::app_error::AppError,
 };
 
 #[derive(Clone)]
@@ -19,7 +19,7 @@ where
         Self { project_repo }
     }
 
-    pub async fn execute(&self, id: &str, user_id: &str, req: CreateOrUpdateProject) -> Result<Project, AppError> {
+    pub async fn execute(&self, id: &str, user_id: &str, req: CreateOrUpdateProject) -> Result<ProjectWithOwnerEmail, AppError> {
 
         let mut project_req = Project::from(&req);
 

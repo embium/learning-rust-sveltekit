@@ -1,5 +1,4 @@
-import { auth } from "$lib/stores/auth";
-import { makeRequest } from "./request";
+import { makeRequest } from './request';
 
 export interface LoginRequest {
   email: string;
@@ -25,70 +24,67 @@ export interface AuthResponse {
   user: User;
 }
 
-class AuthAPI {
-  async login(credentials: LoginRequest): Promise<void> {
-    auth.setLoading(true);
+export class AuthAPI {
+  cookieHeader?: string;
 
-    try {
-      const response = await makeRequest("/oauth/email/login", {
-        method: "POST",
-        body: JSON.stringify(credentials),
-      });
+  constructor(cookieHeader?: string) {
+    this.cookieHeader = cookieHeader;
+  }
 
-      // Store email in localStorage for session persistence
-      localStorage.setItem("user_email", credentials.email);
+  async login(credentials: LoginRequest): Promise<User | null> {
+    const response = await makeRequest('/oauth/email/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+      headers: {
+        Cookie: this.cookieHeader || '',
+      },
+    });
 
-      // Update auth store - fetch current user data
-      await this.getCurrentUser();
-    } catch (error) {
-      auth.setLoading(false);
-      throw error;
+    if (response?.success === false) {
+      throw new Error(response?.message || 'Login failed');
     }
+    return await this.ensureSession();
   }
 
   async signup(userData: SignupRequest): Promise<void> {
-    await makeRequest("/oauth/email/register", {
-      method: "POST",
+    const response = await makeRequest('/oauth/email/register', {
+      method: 'POST',
       body: JSON.stringify(userData),
+      headers: {
+        Cookie: this.cookieHeader || '',
+      },
     });
+
+    if (response?.success === false) {
+      throw new Error(response?.message || 'Signup failed');
+    }
   }
 
   async logout(): Promise<void> {
-    try {
-      await makeRequest("/api/v1/auth/logout", {
-        method: "DELETE",
-      });
-    } catch (error) {
-      // Even if logout fails on server, clear local state
-      console.error("Logout error:", error);
-    } finally {
-      localStorage.removeItem("user_email");
-      auth.clearUser();
-    }
+    await makeRequest('/api/v1/auth/logout', {
+      method: 'DELETE',
+      headers: {
+        Cookie: this.cookieHeader || '',
+      },
+    });
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await makeRequest("/api/v1/auth/current-user", {
-        method: "GET",
+      const response = await makeRequest('/api/v1/auth/current-user', {
+        method: 'GET',
+        headers: {
+          Cookie: this.cookieHeader || '',
+        },
       });
 
       if (response && response.data) {
         const user = response.data as User;
-        auth.setUser({ 
-          id: user.id,
-          email: user.email,
-          fullname: user.fullname,
-          avatar_url: user.avatar_url,
-          is_active: user.is_active,
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        });
         return user;
       }
       return null;
     } catch (error) {
-      console.error("Failed to get current user:", error);
+      console.error('Failed to get current user:', error);
       return null;
     }
   }
@@ -99,35 +95,47 @@ class AuthAPI {
 
   // OAuth functionality
   async getGoogleAuthUrl(): Promise<string> {
-    const response = await makeRequest("/oauth/google/get-url", {
-      method: "GET",
+    const response = await makeRequest('/oauth/google/get-url', {
+      method: 'GET',
     });
-    return response?.data || "";
+    return response?.data || '';
   }
 
-  async handleGoogleCallback(code: string): Promise<void> {
-    auth.setLoading(true);
-    try {
-      await makeRequest(`/oauth/google/callback?code=${encodeURIComponent(code)}`, {
-        method: "GET",
-      });
-      
-      // Fetch current user after successful OAuth
-      await this.getCurrentUser();
-    } catch (error) {
-      auth.setLoading(false);
-      throw error;
-    }
+  async handleGoogleCallback(code: string): Promise<User | null> {
+    await makeRequest(
+      `/oauth/google/callback?code=${encodeURIComponent(code)}`,
+      {
+        method: 'GET',
+      }
+    );
+
+    // Ensure user is available after successful OAuth
+    return await this.ensureSession();
   }
 
   async refreshToken(): Promise<void> {
     try {
-      await makeRequest("/oauth/refresh-token", {
-        method: "GET",
+      await makeRequest('/oauth/refresh-token', {
+        method: 'GET',
+        headers: {
+          Cookie: this.cookieHeader || '',
+        },
       });
     } catch (error) {
-      console.error("Token refresh failed:", error);
+      console.error('Token refresh failed:', error);
       throw error;
+    }
+  }
+
+  async ensureSession(): Promise<User | null> {
+    const user = await this.getCurrentUser();
+    if (user) return user;
+    // Try refresh then fetch
+    try {
+      await this.refreshToken();
+      return await this.getCurrentUser();
+    } catch {
+      return null;
     }
   }
 }

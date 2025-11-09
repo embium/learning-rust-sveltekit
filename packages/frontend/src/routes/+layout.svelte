@@ -1,23 +1,23 @@
 <script lang="ts">
   import "../app.css";
-  import { auth } from "$lib/stores/auth";
   import UserMenu from "$lib/components/UserMenu.svelte";
   import { Button } from "$lib/components/ui/button";
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { resolve } from "$app/paths";
+  import { auth } from "$lib/stores/auth";
 
   let { children } = $props();
 
-  onMount(async () => {
-    // Check auth status when app loads
-    // This is important for direct navigation to work properly
-    await auth.initializeAuth();
-  });
   // Pages that don't require authentication
   const publicRoutes = ["/login", "/signup", "/"];
 
   let isPublicRoute = $derived(publicRoutes.includes($page.url.pathname));
+
+  // Fallback client-side initialization
+  onMount(() => {
+    auth.init();
+  });
 </script>
 
 <svelte:head>
@@ -92,7 +92,7 @@
         >
           Built with
           <a
-            href="https://kit.svelte.dev"
+            href="https://kit.sveltekit.dev"
             target="_blank"
             rel="noreferrer"
             class="font-medium underline underline-offset-4"

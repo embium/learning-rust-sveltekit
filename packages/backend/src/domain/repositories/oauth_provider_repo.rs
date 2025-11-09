@@ -9,4 +9,12 @@ pub trait OauthProviderRepository {
         provider: &str,
         provider_id: &str,
     ) -> Result<UserOauthProvider, AppError>;
+
+    async fn get_by_user_id_and_provider(
+        &self,
+        user_id: &str,
+        provider: &str,
+    ) -> Result<UserOauthProvider, AppError>;
+
+    // async fn get_user_with_provider_by_user_id(&self, user_id: &str) -> Result<UserFull, AppError>;
 }

@@ -2,7 +2,6 @@
   import { page } from "$app/stores";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-  import { onMount } from "svelte";
   import { projectsAPI, type Project } from "$lib/api/projects";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -29,11 +28,19 @@
     Server,
   } from "lucide-svelte";
 
+  interface DataProps {
+    data: {
+      project: Project | null;
+    };
+  }
+
+  let { data }: DataProps = $props();
+
   // Get the project ID from the URL params
   let projectId = $derived($page.params.id);
 
-  let project = $state<Project | null>(null);
-  let isLoading = $state(true);
+  let project = $state<Project | null>(data.project);
+  let isLoading = $state(false);
   let error = $state("");
   let isRefreshing = $state(false);
 
@@ -47,19 +54,6 @@
   // Delete confirmation
   let showDeleteModal = $state(false);
   let isDeleting = $state(false);
-
-  onMount(() => {
-    if (projectId) {
-      loadProject();
-    }
-  });
-
-  // Watch for URL changes and reload project
-  $effect(() => {
-    if (projectId) {
-      loadProject();
-    }
-  });
 
   async function loadProject() {
     if (!projectId) return;

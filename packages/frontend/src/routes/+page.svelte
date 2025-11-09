@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { auth } from "$lib/stores/auth";
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card";
   import {
@@ -15,13 +14,6 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { resolve } from "$app/paths";
-
-  onMount(() => {
-    // Redirect authenticated users to dashboard
-    if ($auth.isAuthenticated) {
-      goto(resolve("/dashboard"));
-    }
-  });
 
   const features = [
     {

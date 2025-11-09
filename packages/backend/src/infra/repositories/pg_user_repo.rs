@@ -35,6 +35,14 @@ impl UserRepository for PgUserRepository {
         Ok(user)
     }
 
+    async fn find_provider_by_user_id(&self, id: &str) -> Result<UserOauthProvider, AppError> {
+        let provider = sqlx::query_as!(UserOauthProvider, "SELECT * FROM user_oauth_providers WHERE user_id = $1", id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(provider)
+    }
+
     async fn tx_create(
         &self,
         tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -55,6 +63,25 @@ impl UserRepository for PgUserRepository {
         ).fetch_one(&mut **tx).await?;
 
         Ok(user)
+    }
+
+    async fn tx_update(
+        &self,
+        tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+        user: &User,
+    ) -> Result<User, AppError> {
+        let updated_user = sqlx::query_as!(
+            User,
+            "UPDATE users SET email = $1, fullname = $2, avatar_url = $3, password_hash = $4, updated_at = $5 WHERE id = $6 RETURNING *",
+            user.email,
+            user.fullname,
+            user.avatar_url,
+            user.password_hash,
+            user.updated_at,
+            user.id
+        ).fetch_one(&mut **tx).await?;
+
+        Ok(updated_user)
     }
 
     async fn tx_register_user(

@@ -8,7 +8,7 @@ pub struct CreateOrUpdateProject {
     #[validate(length(min = 1, max = 255, message = "Name is required"))]
     pub name: String,
 
-    pub description: String,
+    pub description: Option<String>,
 }
 
 impl From<&CreateOrUpdateProject> for Project {
@@ -17,7 +17,7 @@ impl From<&CreateOrUpdateProject> for Project {
             id: uuid::Uuid::new_v4().to_string(),
             user_id: None,
             name: req.name.clone(),
-            description: Some(req.description.clone()),
+            description: req.description.clone(),
             created_at: chrono::Utc::now(),
             updated_at: Some(chrono::Utc::now()),
             deleted_at: None,

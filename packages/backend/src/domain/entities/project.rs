@@ -12,6 +12,17 @@ pub struct Project {
     pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ProjectWithOwnerEmail {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub user_email: Option<String>,
+}
+
 impl Project {
     pub fn new(user_id: Option<String>, name: String, description: Option<String>) -> Self {
         Self {
@@ -23,11 +34,6 @@ impl Project {
             updated_at: None,
             deleted_at: None,
         }
-    }
-
-    pub fn change_name(&mut self, name: String) {
-        self.name = name;
-        self.updated_at = Some(chrono::Utc::now());
     }
 
     pub fn update(&mut self, name: String, description: Option<String>) {

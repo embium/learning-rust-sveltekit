@@ -16,7 +16,7 @@ use sqlx::PgPool;
 
 use super::{
     services::{oauth_svc::OauthService, redis_svc::RedisService},
-    usecases::{auth::init::AuthUsecase, role::init::RoleUsecase, project::init::ProjectUsecase},
+    usecases::{auth::init::AuthUsecase, role::init::RoleUsecase, project::init::ProjectUsecase, user::init::UserUseCases},
 };
 
 #[derive(Clone)]
@@ -36,6 +36,7 @@ pub struct Usecase {
     pub role: Arc<RoleUsecase>,
     pub auth: Arc<AuthUsecase>,
     pub project: Arc<ProjectUsecase>,
+    pub user: Arc<UserUseCases>,
 }
 
 /* End Usecases list */
@@ -88,7 +89,7 @@ impl AppState {
             redis: redis_svc,
         });
 
-        // usecase registration
+        // Usecase registration
         let uc = Arc::new(Usecase {
             role: Arc::new(RoleUsecase::new(role_repo.clone(), rbac.clone())),
             auth: Arc::new(AuthUsecase::new(
@@ -102,6 +103,10 @@ impl AppState {
                 svc.redis.clone(),
             )),
             project: Arc::new(ProjectUsecase::new(project_repo.clone())),
+            user: Arc::new(UserUseCases::new(
+                user_repo.clone(),
+                db_pool.clone(),
+            )),
         });
 
         Self {

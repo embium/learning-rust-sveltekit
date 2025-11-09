@@ -11,9 +11,6 @@ pub struct AppConfig {
     #[envconfig(from = "APP_ENV")]
     pub app_env: String,
 
-    #[envconfig(from = "FRONTEND_PATH")]
-    pub frontend_path: String,
-
     #[envconfig(from = "DATABASE_URL")]
     pub db_url: String,
 

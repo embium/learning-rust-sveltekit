@@ -92,15 +92,25 @@ where
 
                     // if user already registered just return google auth response
                     if let Ok(u) = self.user_repo.find_by_email(&user_info.email).await {
-                        let _session = self
-                            .get_or_create_session(
-                                &u.id,
-                                &resp.access_token,
-                                &resp.refresh_token,
-                                Some(60 * 60 * 24 * 7),
-                            )
-                            .await?;
-                        return Ok(resp);
+                        // Check if the user has a Google OAuth provider linked
+                        match self.oauth_provider_repo.get_by_user_id_and_provider(&u.id, GOOGLE_PROVIDER).await {
+                            Ok(_) => {
+                                // User has Google OAuth provider linked, proceed with login
+                                let _session = self
+                                    .get_or_create_session(
+                                        &u.id,
+                                        &resp.access_token,
+                                        &resp.refresh_token,
+                                        Some(60 * 60 * 24 * 7),
+                                    )
+                                    .await?;
+                                return Ok(resp);
+                            }
+                            Err(_) => {
+                                // User exists but doesn't have Google OAuth provider linked
+                                return Err(AppError::AccountAlreadyExistsWithEmail(u.email));
+                            }
+                        }
                     }
 
                     // register user first & attached role
